@@ -171,24 +171,25 @@ export default function VersionHistoryModal({ docId, onClose }: { docId: string;
             })}
           </ul>
           <div className="flex-1 overflow-y-auto px-8 py-6">
-            {comparison ?
-              <div className='flex items-start justify-between gap-4 mb-4'>
-                <p className='text-[11px]'>
-                  <span>+{comparison.counts.added} words added</span> 
-                  <span>.</span>
-                  <span>-{comparison.counts.removed} words removed</span>
-                </p>
-                <button onClick={() => setShowDiff(false)} className='flex items-center gap-1 text-[11px] px-2 py-1 rounded' style={{color: #a1a1aa}}><X size={12}></X>Close comparison
-                </button>
+            {comparison ? (
+              <div>
+                <div className='flex items-start justify-between gap-4 mb-4'>
+                  <p className='text-[11px]'>
+                    <span>+{comparison.counts.added} words added</span> 
+                    <span>.</span>
+                    <span>-{comparison.counts.removed} words removed</span>
+                  </p>
+                  <button onClick={() => setShowDiff(false)} className='flex items-center gap-1 text-[11px] px-2 py-1 rounded' style={{color: '#a1a1aa'}}><X size={12}></X>Close comparison
+                  </button>
                 </div>
-                <div></div>
-                {
-                  constructor(parameters) {
-                    
-                  }
-                }
-            ) }
-            {selected && (
+                <div className="text-sm leading-relaxed whitespace-pre-wrap" style={{color: '#d4d4d8'}}>
+                  {comparison.segs.map((s, i) => s.type === 'added' ? <ins key={i} className="no-underline" style={{background: 'rgba(34, 197,94,0.18)', color: '#86efac'}}>{s.text}</ins>
+                    : s.type === 'removed' ? <del key={i} style={{background: 'rgba(239,68,68,0.15)', color: "#fca5a5"}}>{s.text}</del>
+                    : <span key={i}>{s.text}</span>
+                  )}
+                </div>
+              </div> 
+            ) :  selected && (
               // Stored HTML is sanitized before previewing
               <div className="editor-prose pointer-events-none select-text" dangerouslySetInnerHTML={{ __html: preview }} />
             )}
