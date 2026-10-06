@@ -1,9 +1,10 @@
 import { useEffect, useMemo, useState } from 'react'
 import { format, formatDistanceToNow } from 'date-fns'
-import { AlertTriangle, History, RotateCcw, Sparkles, PenLine } from 'lucide-react'
+import { AlertTriangle, History, RotateCcw, Sparkles, PenLine, GitCompare, X } from 'lucide-react'
 import { useWorkspaceStore } from '@/lib/store'
 import { sanitizeHtml } from '@/lib/sanitize'
 import { toast } from '@/lib/toast'
+import { diffText, htmlToText, diffCounts } from '@/lib/versionDiff'
 import Modal from '@/components/tasks/Modal'
 
 interface Version {
@@ -30,6 +31,8 @@ export default function VersionHistoryModal({ docId, onClose }: { docId: string;
   const [error, setError] = useState<string | null>(null)
   const [selectedId, setSelectedId] = useState<string | null>(null)
   const [restoring, setRestoring] = useState(false)
+  const [compareIds, setCompareIds] = useState<string[] | null>(null)
+  const [showDiff, setShowDiff] = useState(false)
 
   useEffect(() => {
     let cancelled = false
@@ -50,8 +53,24 @@ export default function VersionHistoryModal({ docId, onClose }: { docId: string;
   const selected = versions?.find((v) => v.id === selectedId) ?? null
   const preview = useMemo(() => (selected ? sanitizeHtml(selected.content) : ''), [selected])
 
+  const toggleCompare = (id: string) => 
+    setCompareIds((ids) => {
+      const list = ids ?? []
+      if (list.includes(id)) return list.filter((x) => x !== id)
+      return list.length === 2 ? [list[1], id] : [...list, id]
+    })
+  
+  const exitCompare = () => { setCompareIds(null); setShowDiff(false)}
+
+  const comparison = useMemo(() => {
+    if(!showDiff || !versions || compareIds?.length !== 2) return null
+    const [older, newer] = compareIds.map((id) => versions.find((v) => v.id === id)!).sort((x , y) => x.createdAt.localeCompare(y.createdAt))
+    const segs = diffText(htmlToText(older.content), htmlToText(newer.content))
+    return { older, newer, segs, counts: diffCounts(segs) }
+  }, [showDiff, compareIds, versions])
+
   const restore = async () => {
-    if (!selected) return
+    if (!selected) return  
     setRestoring(true)
     try {
       const res = await fetch(`/api/db/documents/${docId}/versions/${selected.id}/restore`, { method: 'POST' })
@@ -79,6 +98,16 @@ export default function VersionHistoryModal({ docId, onClose }: { docId: string;
           <span className="text-[11px]" style={{ color: '#9d9da6' }}>
             Restoring keeps the current content as a version, so you can always go back.
           </span>
+          {versions && versions.length >= 2 && (compareIds === null)}
+            <button onClick={() => setCompareIds([])} className="ml-auto flex items-center gap-1.5 py-1.5 text-xs" style={{ color: "#c7d2fe"}}>
+              <GitCompare size={12} />Compare versions
+            </button>
+              <>
+                <button onClick={exitCompare} className='ml-auto px-3 py-1.5 rounded-md text-xs' style={{color: '#a1a1aa'}}>Cancel compare</button>
+                <button onClick={() => setShowDiff(true)} disabled={(compareIds ?? []).length !==2} className='flex items-center gap-1.5 py-1.5 text-xs' style={{ background: '#27272a', color: '#e4e4e7'}}>
+                  <GitCompare size={12} />Compare({(compareIds ?? []).length}/2)
+                </button>
+              </>
           <button onClick={onClose} className="ml-auto px-3 py-1.5 rounded-md text-xs" style={{ color: '#a1a1aa' }}>Close</button>
           <button
             onClick={restore}
@@ -114,7 +143,13 @@ export default function VersionHistoryModal({ docId, onClose }: { docId: string;
               const Icon = meta.icon
               const active = v.id === selectedId
               return (
-                <li key={v.id}>
+                <li key={v.id} className='flex items-start'> { compareIds !== null && (
+                  <input 
+                    type="checkbox"
+                    checked={compareIds?.includes(v.id)}
+                    onChange={() => toggleCompare(v.id)} className='mt-3 ml-3 accent-indigo-500'
+                    ></input>
+                  )}
                   <button
                     onClick={() => setSelectedId(v.id)}
                     className="w-full text-left px-4 py-2.5 transition-colors"
@@ -136,6 +171,23 @@ export default function VersionHistoryModal({ docId, onClose }: { docId: string;
             })}
           </ul>
           <div className="flex-1 overflow-y-auto px-8 py-6">
+            {comparison ?
+              <div className='flex items-start justify-between gap-4 mb-4'>
+                <p className='text-[11px]'>
+                  <span>+{comparison.counts.added} words added</span> 
+                  <span>.</span>
+                  <span>-{comparison.counts.removed} words removed</span>
+                </p>
+                <button onClick={() => setShowDiff(false)} className='flex items-center gap-1 text-[11px] px-2 py-1 rounded' style={{color: #a1a1aa}}><X size={12}></X>Close comparison
+                </button>
+                </div>
+                <div></div>
+                {
+                  constructor(parameters) {
+                    
+                  }
+                }
+            ) }
             {selected && (
               // Stored HTML is sanitized before previewing
               <div className="editor-prose pointer-events-none select-text" dangerouslySetInnerHTML={{ __html: preview }} />
